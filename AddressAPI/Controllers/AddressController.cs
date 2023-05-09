@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Linq.Expressions;
+using System.Reflection;
 using AddressAPI;
 using AddressAPI.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -22,34 +23,42 @@ public class AddressController : ControllerBase
         var addresses = _context.Address.AsQueryable();
 
         // Apply search filter
-        // TODO make this dynamic
         if (!string.IsNullOrEmpty(query.Search))
         {
-            addresses = addresses.Where(a =>
-                a.StreetName.Contains(query.Search) ||
-                a.HouseNumber.Contains(query.Search) ||
-                a.ZipCode.Contains(query.Search) ||
-                a.City.Contains(query.Search) ||
-                a.Country.Contains(query.Search));
+            var parameter = Expression.Parameter(typeof(Address), "a");
+            var searchProperty = typeof(Address).GetProperties()
+                .Where(p => p.PropertyType == typeof(string))
+                .Aggregate((Expression)null, (agg, prop) =>
+                {
+                    var propExpr = Expression.Property(parameter, prop);
+                    var containsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) });
+                    var constExpr = Expression.Constant(query.Search);
+                    var containsExpr = Expression.Call(propExpr, containsMethod, constExpr);
+                    if (agg == null) return containsExpr;
+                    return Expression.OrElse(agg, containsExpr);
+                });
+            var searchLambda = Expression.Lambda<Func<Address, bool>>(searchProperty, parameter);
+            addresses = addresses.Where(searchLambda);
         }
 
-        // Apply sort order
-        // TODO method doesn't work
+
+
         if (!string.IsNullOrEmpty(query.SortBy))
         {
             var propertyInfo = typeof(Address).GetProperty(query.SortBy, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
             if (propertyInfo != null)
             {
-                if (query.SortBy.ToLower() == "asc")
-                {
-                    addresses = addresses.OrderBy(a => propertyInfo.GetValue(a, null));
-                }
-                else if (query.SortBy.ToLower() == "desc")
-                {
-                    addresses = addresses.OrderByDescending(a => propertyInfo.GetValue(a, null));
-                }
+                var parameterExpression = Expression.Parameter(typeof(Address), "x");
+                var propertyExpression = Expression.Property(parameterExpression, propertyInfo);
+                var lambdaExpression = Expression.Lambda(propertyExpression, parameterExpression);
+
+                addresses = query.SortDescending == false ?
+                    Queryable.OrderBy(addresses, (dynamic)lambdaExpression) :
+                    Queryable.OrderByDescending(addresses, (dynamic)lambdaExpression);
             }
         }
+
+
 
         return await addresses.ToListAsync();
     }
