@@ -18,50 +18,60 @@ public class AddressController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Address>>> GetAddresses([FromQuery] AddressQuery query)
-
     {
         var addresses = _context.Address.AsQueryable();
 
         // Apply search filter
         if (!string.IsNullOrEmpty(query.Search))
         {
+            // Create an expression parameter for the Address type
             var parameter = Expression.Parameter(typeof(Address), "a");
+
+            // Get all the string properties of the Address type and reate an aggregate expression that
+            // combines them using the 'OR' operator
             var searchProperty = typeof(Address).GetProperties()
                 .Where(p => p.PropertyType == typeof(string))
                 .Aggregate((Expression)null, (agg, prop) =>
                 {
+                    // Create an expression for checking if the property value contains the search query
                     var propExpr = Expression.Property(parameter, prop);
                     var containsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) });
                     var constExpr = Expression.Constant(query.Search);
                     var containsExpr = Expression.Call(propExpr, containsMethod, constExpr);
+
+                    // Combine the expression with the previous expressions using the 'OR' operator
                     if (agg == null) return containsExpr;
                     return Expression.OrElse(agg, containsExpr);
                 });
+
+            // Create a lambda expression from the search property expression and apply it to the addresses query
             var searchLambda = Expression.Lambda<Func<Address, bool>>(searchProperty, parameter);
             addresses = addresses.Where(searchLambda);
         }
 
-
-
+        // Apply sort order
         if (!string.IsNullOrEmpty(query.SortBy))
         {
+            // Get the property info for the sort field
             var propertyInfo = typeof(Address).GetProperty(query.SortBy, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
             if (propertyInfo != null)
             {
+                // Create an expression for accessing the sort field
                 var parameterExpression = Expression.Parameter(typeof(Address), "x");
                 var propertyExpression = Expression.Property(parameterExpression, propertyInfo);
                 var lambdaExpression = Expression.Lambda(propertyExpression, parameterExpression);
 
+                // Apply the sort order to the addresses query
                 addresses = query.SortDescending == false ?
                     Queryable.OrderBy(addresses, (dynamic)lambdaExpression) :
                     Queryable.OrderByDescending(addresses, (dynamic)lambdaExpression);
             }
         }
 
-
-
+        // Return the list of addresses
         return await addresses.ToListAsync();
     }
+
 
 
     [HttpGet("{id}")]
