@@ -2,6 +2,7 @@
 using System.Reflection;
 using AddressAPI;
 using AddressAPI.Models;
+using AddressAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -125,4 +126,31 @@ public class AddressController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("distance")]
+    public async Task<ActionResult<double>> CalculateDistance([FromQuery] int originId, [FromQuery] int destinationId)
+    {
+        var originAddress = await _context.Address.FindAsync(originId);
+        var destinationAddress = await _context.Address.FindAsync(destinationId);
+
+        if (originAddress == null || destinationAddress == null)
+        {
+            return NotFound("One or both of the provided address IDs were not found in the database.");
+        }
+
+        string FormatAddress(Address address)
+        {
+            return $"{address.StreetName} {address.HouseNumber}, {address.ZipCode}, {address.City}, {address.Country}";
+        }
+
+        var originAddressString = FormatAddress(originAddress);
+        var destinationAddressString = FormatAddress(destinationAddress);
+
+        var distanceCalculator = new DistanceCalculator();
+        var distance = await distanceCalculator.CalculateDistance(originAddressString, destinationAddressString);
+
+        return distance;
+    }
+
+
 }
