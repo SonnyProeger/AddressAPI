@@ -23,8 +23,7 @@ Open the .env file and provide the necessary configuration values, such as the G
 # Running the Application
 Open a terminal or command prompt.  
 Navigate to the project's root directory.  
-Run the following command to start the application:  
-dotnet run. 
+Run the following command to start the application: dotnet run.  
 The application will start running on your localhost.  
 
 # Usage
