@@ -42,11 +42,11 @@ The application will start running on your localhost.
 **SortDescending** - Set to true to sort the addresses in descending order.  
 
 # Example Usage
-Retrieve all addresses: ***GET /api/addresses***. 
-Retrieve a specific address: ***GET /api/addresses/{id}***. 
-Create a new address: ***POST /api/addresses***. 
-Update an existing address: ***PUT /api/addresses/{id}***. 
-Delete an address: ***DELETE /api/addresses/{id}***. 
+Retrieve all addresses: ***GET /api/addresses***.  
+Retrieve a specific address: ***GET /api/addresses/{id}***.  
+Create a new address: ***POST /api/addresses***.  
+Update an existing address: ***PUT /api/addresses/{id}***.  
+Delete an address: ***DELETE /api/addresses/{id}***.  
 Calculate the distance between two addresses: ***GET /api/addresses/distance?originId={originId}&destinationId={destinationId}***. 
 
 # Reflection
